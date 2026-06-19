@@ -1,6 +1,5 @@
 #include "transport_catalogue.h"
 
-#include <algorithm>
 #include <set>
 
 namespace tc {
@@ -12,47 +11,60 @@ size_t ComputeUnique(const std::vector<T>& vec) {
     return counter.size();
 }
 
-Stop* TransportCatalogue::AddStop(Stop&& stop) {
-    if (Stop* found_stop{FindStop(stop.name)}; nullptr != found_stop) {
-        if (auto& coord{found_stop->coordinates};
-            (0 == coord.lat && 0 == coord.lng)) {
-            coord = std::move(stop.coordinates);
-        }
-
-        return found_stop;
+void TransportCatalogue::AddStop(const Stop& stop) {
+    if (const Stop* found_stop{FindStop(stop.name)}; nullptr != found_stop) {
+        return;
     }
 
     stops_.push_back(std::move(stop));
-    Stop* added_stop = &stops_.back();
+    const Stop* added_stop = &stops_.back();
 
     stopname_to_stop_[added_stop->name] = added_stop;
-
-    return added_stop;
 }
 
-Stop* TransportCatalogue::FindStop(std::string_view stop_name) const noexcept {
+const Stop* TransportCatalogue::FindStop(
+    std::string_view stop_name) const noexcept {
     auto it{stopname_to_stop_.find(stop_name)};
 
     return (it != stopname_to_stop_.cend() ? it->second : nullptr);
 }
 
-Bus* TransportCatalogue::AddBus(Bus&& bus) {
-    if (Bus* found_bus{FindBus(bus.name)}; nullptr != found_bus) {
-        return found_bus;
+void TransportCatalogue::AddBus(std::string_view name,
+                                const std::vector<std::string_view>& route) {
+    if (const Bus* found_bus{FindBus(name)}; nullptr != found_bus) {
+        return;
     }
 
-    buses_.push_back(std::move(bus));
-    Bus* added_bus = &buses_.back();
+    buses_.push_back(Bus{.name{name}, .route{}});
+    Bus& added_bus{buses_.back()};
+    busname_to_bus_[added_bus.name] = &added_bus;
 
-    busname_to_bus_[added_bus->name] = added_bus;
+    for (const auto& r : route) {
+        const Stop* found_stop{FindStop(r)};
+        if (nullptr == found_stop) {
+            continue;
+        }
 
-    return added_bus;
+        buses_throught_stop_[found_stop->name].insert(added_bus.name);
+
+        added_bus.route.push_back(found_stop);
+    }
 }
 
-Bus* TransportCatalogue::FindBus(std::string_view bus_name) const noexcept {
+const Bus* TransportCatalogue::FindBus(
+    std::string_view bus_name) const noexcept {
     auto it{busname_to_bus_.find(bus_name)};
 
     return (it != busname_to_bus_.cend() ? it->second : nullptr);
+}
+
+const std::set<std::string_view>& TransportCatalogue::GetStopInfo(
+    std::string_view stop_name) const {
+    static const std::set<std::string_view> kBlank{};
+
+    auto it = buses_throught_stop_.find(stop_name);
+
+    return (it != buses_throught_stop_.cend() ? it->second : kBlank);
 }
 
 BusInfo TransportCatalogue::GetBusInfo(std::string_view bus_name) const {
@@ -76,29 +88,6 @@ BusInfo TransportCatalogue::GetBusInfo(std::string_view bus_name) const {
             .stops = kStopCount,
             .unique_stops = kUniqueStopsCount,
             .route_length = length};
-}
-
-StopInfo TransportCatalogue::GetStopInfo(std::string_view stop_name) const {
-    const Stop* found_stop{FindStop(stop_name)};
-
-    if (nullptr == found_stop) {
-        return {};
-    }
-
-    std::set<std::string_view> buses_throught_stop;
-    for (auto it{buses_.cbegin()}; it != buses_.cend(); ++it) {
-        auto stop_in_route{std::find_if(it->route.cbegin(), it->route.cend(),
-                                        [&](const Stop* stop) -> bool {
-                                            return found_stop->name ==
-                                                   stop->name;
-                                        })};
-
-        if (stop_in_route != it->route.cend()) {
-            buses_throught_stop.insert(it->name);
-        }
-    }
-
-    return {.name{found_stop->name}, .buses{std::move(buses_throught_stop)}};
 }
 
 }  // namespace tc

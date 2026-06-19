@@ -18,42 +18,57 @@ void ParseAndPrintStat(const tc::TransportCatalogue& transport_catalogue,
 
     using std::string_view_literals::operator""sv;
     using std::string_literals::operator""s;
-    if ("Bus"sv == command) {
-        const auto kBusInfo{transport_catalogue.GetBusInfo(query)};
-
-        output << "Bus "s << query << ": "s;
-
-        if (kBusInfo.name.empty()) {
-            output << "not found"s;
-        } else {
-            const int kDoublePrecision = 6;
-            const auto kOldPrecision{output.precision()};
-
-            output << kBusInfo.stops << " stops on route, "s
-                   << kBusInfo.unique_stops << " unique stops, "s
-                   << std::setprecision(kDoublePrecision)
-                   << kBusInfo.route_length << " route length"s;
-
-            output << std::setprecision(static_cast<int>(kOldPrecision));
-        }
-    } else if ("Stop"sv == command) {
-        const auto kStopInfo{transport_catalogue.GetStopInfo(query)};
-        output << "Stop "s << query << ": "s;
-
-        if (kStopInfo.name.empty()) {
-            output << "not found"s;
-        } else if (kStopInfo.buses.empty()) {
-            output << "no buses"s;
-        } else {
-            output << "buses"s;
-
-            for (const auto kBus : kStopInfo.buses) {
-                output << " "s << kBus;
-            }
-        }
+    output << command << " "s << query << ": "s;
+    if ("Stop"sv == command) {
+        PrintStopInfo(transport_catalogue, query, output);
+    } else if ("Bus"sv == command) {
+        PrintBusInfo(transport_catalogue, query, output);
     }
 
     output << std::endl;
+}
+
+void PrintStopInfo(const tc::TransportCatalogue& transport_catalogue,
+                   std::string_view query, std::ostream& output) {
+    using std::string_literals::operator""s;
+
+    if (const auto* found_stop{transport_catalogue.FindStop(query)};
+        nullptr == found_stop) {
+        output << "not found"s;
+
+        return;
+    }
+
+    const auto& stop_info{transport_catalogue.GetStopInfo(query)};
+    if (stop_info.empty()) {
+        output << "no buses"s;
+    } else {
+        output << "buses"s;
+
+        for (auto busname : stop_info) {
+            output << " "s << busname;
+        }
+    }
+}
+
+void PrintBusInfo(const tc::TransportCatalogue& transport_catalogue,
+                  std::string_view query, std::ostream& output) {
+    const auto kBusInfo{transport_catalogue.GetBusInfo(query)};
+
+    using std::string_literals::operator""s;
+    if (kBusInfo.name.empty()) {
+        output << "not found"s;
+    } else {
+        const int kDoublePrecision = 6;
+        const auto kOldPrecision{output.precision()};
+
+        output << kBusInfo.stops << " stops on route, "s
+               << kBusInfo.unique_stops << " unique stops, "s
+               << std::setprecision(kDoublePrecision) << kBusInfo.route_length
+               << " route length"s;
+
+        output << std::setprecision(static_cast<int>(kOldPrecision));
+    }
 }
 
 }  // namespace stat
