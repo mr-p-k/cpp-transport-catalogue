@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+namespace geo {
+
 struct Coordinates {
     double lat;
     double lng;
@@ -18,8 +20,12 @@ inline double ComputeDistance(Coordinates from, Coordinates to) {
     if (from == to) {
         return 0;
     }
-    static const double dr = 3.1415926535 / 180.;
-    return acos(sin(from.lat * dr) * sin(to.lat * dr)
-                + cos(from.lat * dr) * cos(to.lat * dr) * cos(abs(from.lng - to.lng) * dr))
-        * 6371000;
+    static const double kDR = 3.1415926535 / 180.;
+    static const int kEarthRadius = 6371000;
+    return acos((sin(from.lat * kDR) * sin(to.lat * kDR)) +
+                (cos(from.lat * kDR) * cos(to.lat * kDR) *
+                 cos(abs(from.lng - to.lng) * kDR))) *
+           kEarthRadius;
 }
+
+}  // namespace geo

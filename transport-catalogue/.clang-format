@@ -1,0 +1,7 @@
+---
+BasedOnStyle: Google
+IndentWidth: 4
+---
+Language: Cpp
+AllowShortFunctionsOnASingleLine: None
+AccessModifierOffset: -4
