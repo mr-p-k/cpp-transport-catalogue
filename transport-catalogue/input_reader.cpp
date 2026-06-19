@@ -124,22 +124,16 @@ void InputReader::ApplyCommands(tc::TransportCatalogue& catalogue) const {
         if (c == "Stop"sv) {
             catalogue.AddStop(
                 {.name{el.id}, .coordinates{ParseCoordinates(el.description)}});
-        } else if (c == "Bus"sv) {
-            std::vector<Stop*> stops_on_route{};
+        }
+    }
 
+    for (const auto& el : commands_) {
+        std::string_view c{el.command};
+
+        if (c == "Bus"sv) {
             std::vector<std::string_view> route{ParseRoute(el.description)};
-            for (auto r : route) {
-                if (Stop* added_stop{
-                        catalogue.AddStop({.name{r}, .coordinates{}})};
-                    nullptr != added_stop) {
-                    stops_on_route.push_back(added_stop);
-                }
-            }
 
-            if (!stops_on_route.empty()) {
-                catalogue.AddBus(
-                    {.name{el.id}, .route{std::move(stops_on_route)}});
-            }
+            catalogue.AddBus(el.id, route);
         }
     }
 }

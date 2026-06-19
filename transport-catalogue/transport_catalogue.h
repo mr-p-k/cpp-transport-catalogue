@@ -17,12 +17,7 @@ struct Stop {
 
 struct Bus {
     std::string name;
-    std::vector<Stop*> route;
-};
-
-struct StopInfo {
-    std::string_view name;
-    std::set<std::string_view> buses;
+    std::vector<const Stop*> route;
 };
 
 struct BusInfo {
@@ -34,21 +29,32 @@ struct BusInfo {
 
 class TransportCatalogue {
 public:
-    [[maybe_unused]] Stop* AddStop(Stop&& stop);
-    [[nodiscard]] Stop* FindStop(std::string_view stop_name) const noexcept;
+    void AddStop(const Stop& stop);
 
-    [[maybe_unused]] Bus* AddBus(Bus&& bus);
-    [[nodiscard]] Bus* FindBus(std::string_view bus_name) const noexcept;
+    [[nodiscard]] const Stop* FindStop(
+        std::string_view stop_name) const noexcept;
 
-    [[nodiscard]] StopInfo GetStopInfo(std::string_view stop_name) const;
+    void AddBus(std::string_view name,
+                const std::vector<std::string_view>& route);
+
+    [[nodiscard]] const Bus* FindBus(std::string_view bus_name) const noexcept;
+
+    [[nodiscard]] const std::set<std::string_view>& GetStopInfo(
+        std::string_view stop_name) const;
+
     [[nodiscard]] BusInfo GetBusInfo(std::string_view bus_name) const;
 
 private:
     std::deque<Stop> stops_;
-    std::unordered_map<std::string_view, Stop*> stopname_to_stop_;
+
+    std::unordered_map<std::string_view, const Stop*> stopname_to_stop_;
 
     std::deque<Bus> buses_;
-    std::unordered_map<std::string_view, Bus*> busname_to_bus_;
+
+    std::unordered_map<std::string_view, const Bus*> busname_to_bus_;
+
+    std::unordered_map<std::string_view, std::set<std::string_view>>
+        buses_throught_stop_;
 };
 
 }  // namespace tc
