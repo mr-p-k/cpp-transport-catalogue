@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cassert>
+#include <deque>
+#include <iostream>
 #include <iterator>
 
 namespace reader {
@@ -17,16 +19,16 @@ geo::Coordinates ParseCoordinates(std::string_view str) {
     auto comma = str.find(',');
 
     if (comma == std::string_view::npos) {
-        return {kNan, kNan};
+        return {.lat = kNan, .lng = kNan};
     }
 
     auto not_space2 = str.find_first_not_of(' ', comma + 1);
 
-    double lat =
+    const double kLat =
         std::stod(std::string(str.substr(not_space, comma - not_space)));
-    double lng = std::stod(std::string(str.substr(not_space2)));
+    const double kLng = std::stod(std::string(str.substr(not_space2)));
 
-    return {lat, lng};
+    return {.lat = kLat, .lng = kLng};
 }
 
 /**
@@ -63,6 +65,46 @@ std::vector<std::string_view> Split(std::string_view string, char delim) {
     return result;
 }
 
+std::vector<std::pair<std::string_view, int>> ParseDistance(
+    std::string_view str) {
+    using std::string_view_literals::operator""sv;
+    // std::clog << "ParseDistance arg: str: " << str << std::endl;
+
+    auto substrs{Split(str, ',')};
+    if (substrs.empty()) {
+        return {};
+    }
+
+    const auto kBufSize = 100;  // по условию
+    std::vector<std::pair<std::string_view, int>> distances;
+    distances.reserve(kBufSize);
+
+    for (auto s : substrs) {
+        auto suffix_m = s.find('m');
+
+        auto skip_to_begin = s.find_first_not_of(' ', suffix_m + 1);
+        auto skip_to_end = s.find('o', skip_to_begin + 1);
+
+        auto stop_name_begin = s.find_first_not_of(' ', skip_to_end + 1);
+
+        if (suffix_m == std::string_view::npos ||
+            stop_name_begin == std::string_view ::npos) {
+            continue;
+        }
+
+        auto distance = std::stoi(std::string(s.substr(0, suffix_m)));
+        auto stop_name = s.substr(stop_name_begin);
+
+        if (distances.size() >= kBufSize) {
+            break;
+        }
+
+        distances.emplace_back(stop_name, distance);
+    }
+
+    return distances;
+}
+
 /**
  * Парсит маршрут.
  * Для кольцевого маршрута (A>B>C>A) возвращает массив названий остановок
@@ -79,7 +121,8 @@ std::vector<std::string_view> ParseRoute(std::string_view route) {
     decltype(stops) result;
     result.reserve((stops.size() * 2) - 1);
 
-    std::copy(stops.cbegin(), stops.cend(), std::back_inserter(result));
+    // std::copy(stops.cbegin(), stops.cend(), std::back_inserter(result));
+    std::ranges::copy(stops, std::back_inserter(result));
     std::copy(std::next(stops.crbegin()), stops.crend(),
               std::back_inserter(result));
 
@@ -102,9 +145,9 @@ CommandDescription ParseCommandDescription(std::string_view line) {
         return {};
     }
 
-    return {std::string(line.substr(0, space_pos)),
-            std::string(line.substr(not_space, colon_pos - not_space)),
-            std::string(line.substr(colon_pos + 1))};
+    return {.command = std::string(line.substr(0, space_pos)),
+            .id = std::string(line.substr(not_space, colon_pos - not_space)),
+            .description = std::string(line.substr(colon_pos + 1))};
 }
 
 void InputReader::ParseLine(std::string_view line) {
@@ -118,22 +161,37 @@ void InputReader::ApplyCommands(tc::TransportCatalogue& catalogue) const {
     using std::string_view_literals::operator""sv;
     using tc::Stop;
 
+    // add stop and coordinates
     for (const auto& el : commands_) {
-        std::string_view c{el.command};
+        const std::string_view kCommand{el.command};
 
-        if (c == "Stop"sv) {
+        if (kCommand == "Stop"sv) {
             catalogue.AddStop(
                 {.name{el.id}, .coordinates{ParseCoordinates(el.description)}});
         }
     }
 
+    // add distances between stops
     for (const auto& el : commands_) {
-        std::string_view c{el.command};
+        const std::string_view kCommand{el.command};
 
-        if (c == "Bus"sv) {
-            std::vector<std::string_view> route{ParseRoute(el.description)};
+        if (kCommand == "Stop"sv) {
+            auto distances_for_stop{ParseDistance(el.description)};
+            if (!distances_for_stop.empty()) {
+                catalogue.SetDistance(el.id, distances_for_stop);
+            }
+        }
+    }
 
-            catalogue.AddBus(el.id, route);
+    // add routes
+    for (const auto& el : commands_) {
+        const std::string_view kCommand{el.command};
+
+        if (kCommand == "Bus"sv) {
+            const std::vector<std::string_view> kRoute{
+                ParseRoute(el.description)};
+
+            catalogue.AddBus(el.id, kRoute);
         }
     }
 }

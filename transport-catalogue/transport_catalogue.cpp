@@ -1,14 +1,27 @@
 #include "transport_catalogue.h"
 
+#include <cstdint>
+#include <iostream>
 #include <set>
+#include <utility>
 
 namespace tc {
 
+size_t StopPtrHasher::operator()(
+    const std::pair<const Stop*, const Stop*> stop_ptr_pair) const {
+    const std::uintptr_t kSalt = 37;
+
+    auto s1{reinterpret_cast<std::uintptr_t>(stop_ptr_pair.first)};
+    auto s2{reinterpret_cast<std::uintptr_t>(stop_ptr_pair.second)};
+
+    return hasher(s1 + (s2 * kSalt));
+}
+
 template <typename T>
 size_t ComputeUnique(const std::vector<T>& vec) {
-    std::set<T> counter(vec.cbegin(), vec.cend());
+    const std::set<T> kCounter(vec.cbegin(), vec.cend());
 
-    return counter.size();
+    return kCounter.size();
 }
 
 void TransportCatalogue::AddStop(const Stop& stop) {
@@ -16,7 +29,7 @@ void TransportCatalogue::AddStop(const Stop& stop) {
         return;
     }
 
-    stops_.push_back(std::move(stop));
+    stops_.push_back(stop);
     const Stop* added_stop = &stops_.back();
 
     stopname_to_stop_[added_stop->name] = added_stop;
@@ -77,17 +90,60 @@ BusInfo TransportCatalogue::GetBusInfo(std::string_view bus_name) const {
     const size_t kStopCount = found_bus->route.size();
     const size_t kUniqueStopsCount = ComputeUnique(found_bus->route);
 
-    double length = 0.0;
-
-    for (int i = 1; i < kStopCount; ++i) {
-        length += ComputeDistance(found_bus->route[i - 1]->coordinates,
-                                  found_bus->route[i]->coordinates);
+    double geo_length = 0.0;
+    for (int i = 1; std::cmp_less(i, kStopCount); ++i) {
+        geo_length += ComputeDistance(found_bus->route[i - 1]->coordinates,
+                                      found_bus->route[i]->coordinates);
     }
 
-    return {.name{found_bus->name},
-            .stops = kStopCount,
-            .unique_stops = kUniqueStopsCount,
-            .route_length = length};
+    double route_length = 0.0;
+    for (int i = 1; std::cmp_less(i, kStopCount); ++i) {
+        const int kDist =
+            GetDistance({found_bus->route[i - 1], found_bus->route[i]});
+
+        route_length += static_cast<double>(kDist);
+    }
+
+    return {
+        .name{found_bus->name},
+        .stops = kStopCount,
+        .unique_stops = kUniqueStopsCount,
+        .route_length = route_length,
+        .curvature = route_length / geo_length,
+    };
+}
+
+void TransportCatalogue::SetDistance(
+    std::string_view stop,
+    const std::vector<std::pair<std::string_view, int>>& distances) {
+    const Stop* stop_a{FindStop(stop)};
+
+    if (nullptr == stop_a || distances.empty()) {
+        return;
+    }
+
+    for (auto dist : distances) {
+        const Stop* stop_b{FindStop(dist.first)};
+        if (nullptr == stop_b) {
+            continue;
+        }
+
+        distance_.insert({{stop_a, stop_b}, dist.second});
+    }
+}
+
+int TransportCatalogue::GetDistance(
+    std::pair<const Stop*, const Stop*> stop_ptr_pair) const noexcept {
+    auto found_a_to_b{distance_.find(stop_ptr_pair)};
+
+    if (found_a_to_b == distance_.cend()) {
+        auto found_b_to_a{
+            distance_.find({stop_ptr_pair.second, stop_ptr_pair.first})};
+
+        return (found_b_to_a != distance_.cend()) ? found_b_to_a->second : 0;
+    }
+
+    return found_a_to_b->second;
 }
 
 }  // namespace tc
