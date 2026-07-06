@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <deque>
 #include <set>
 #include <string>
@@ -25,6 +26,13 @@ struct BusInfo {
     size_t stops;
     size_t unique_stops;
     double route_length;
+    double curvature;
+};
+
+struct StopPtrHasher {
+    size_t operator()(std::pair<const Stop*, const Stop*> stop_ptr_pair) const;
+
+    std::hash<std::uintptr_t> hasher;
 };
 
 class TransportCatalogue {
@@ -44,6 +52,15 @@ public:
 
     [[nodiscard]] BusInfo GetBusInfo(std::string_view bus_name) const;
 
+    void SetDistance(std::pair<const Stop*, const Stop*> stops, int dist);
+
+    void SetDistance(
+        std::string_view stop,
+        const std::vector<std::pair<std::string_view, int>>& distances);
+
+    [[nodiscard]] int GetDistance(
+        std::pair<const Stop*, const Stop*> stop_ptr_pair) const noexcept;
+
 private:
     std::deque<Stop> stops_;
 
@@ -55,6 +72,9 @@ private:
 
     std::unordered_map<std::string_view, std::set<std::string_view>>
         buses_throught_stop_;
+
+    std::unordered_map<std::pair<const Stop*, const Stop*>, int, StopPtrHasher>
+        distance_;
 };
 
 }  // namespace tc

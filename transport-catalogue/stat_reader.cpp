@@ -5,6 +5,12 @@
 
 namespace stat {
 
+void PrintStopInfo(const tc::TransportCatalogue& transport_catalogue,
+                   std::string_view query, std::ostream& output);
+
+void PrintBusInfo(const tc::TransportCatalogue& transport_catalogue,
+                  std::string_view query, std::ostream& output);
+
 void ParseAndPrintStat(const tc::TransportCatalogue& transport_catalogue,
                        std::string_view request, std::ostream& output) {
     if (request.empty()) {
@@ -13,19 +19,19 @@ void ParseAndPrintStat(const tc::TransportCatalogue& transport_catalogue,
 
     size_t space_pos = request.find(' ');
 
-    std::string_view command = request.substr(0, space_pos++);
-    std::string_view query = request.substr(space_pos);
+    const std::string_view kCommand = request.substr(0, space_pos++);
+    const std::string_view kQuery = request.substr(space_pos);
 
     using std::string_view_literals::operator""sv;
     using std::string_literals::operator""s;
-    output << command << " "s << query << ": "s;
-    if ("Stop"sv == command) {
-        PrintStopInfo(transport_catalogue, query, output);
-    } else if ("Bus"sv == command) {
-        PrintBusInfo(transport_catalogue, query, output);
+    output << kCommand << " "s << kQuery << ": "s;
+    if ("Stop"sv == kCommand) {
+        PrintStopInfo(transport_catalogue, kQuery, output);
+    } else if ("Bus"sv == kCommand) {
+        PrintBusInfo(transport_catalogue, kQuery, output);
     }
 
-    output << std::endl;
+    output << '\n';
 }
 
 void PrintStopInfo(const tc::TransportCatalogue& transport_catalogue,
@@ -65,7 +71,7 @@ void PrintBusInfo(const tc::TransportCatalogue& transport_catalogue,
         output << kBusInfo.stops << " stops on route, "s
                << kBusInfo.unique_stops << " unique stops, "s
                << std::setprecision(kDoublePrecision) << kBusInfo.route_length
-               << " route length"s;
+               << " route length, "s << kBusInfo.curvature << " curvature";
 
         output << std::setprecision(static_cast<int>(kOldPrecision));
     }
