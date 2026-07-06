@@ -1,8 +1,17 @@
 Checks: >
-  -*,
-  clang-*,
-  cppcoreguidelines-*,
-  readability-*
+  *,
+  -llvm-*,
+  -llvmlibc-*,
+  -google-build-using-namespace,
+  -modernize-use-trailing-return-type,
+  -fuchsia-*,
+  -altera-*,
+  -portability-avoid-pragma-once,
+  -abseil-*,
+  -boost-*,
+  -misc-use-internal-*,
+  -misc-include-cleaner,
+  -misc-non-private-member-variables-in-classes
 
 WarningsAsErrors: "*"
 HeaderFilterRegex: ".*"
