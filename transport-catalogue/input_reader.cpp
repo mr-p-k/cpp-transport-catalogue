@@ -2,8 +2,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <deque>
-#include <iostream>
 #include <iterator>
 
 namespace reader {
@@ -178,7 +176,9 @@ void InputReader::ApplyCommands(tc::TransportCatalogue& catalogue) const {
         if (kCommand == "Stop"sv) {
             auto distances_for_stop{ParseDistance(el.description)};
             if (!distances_for_stop.empty()) {
-                catalogue.SetDistance(el.id, distances_for_stop);
+                for (const auto& dist : distances_for_stop) {
+                    catalogue.SetDistance(el.id, dist.first, dist.second);
+                }
             }
         }
     }

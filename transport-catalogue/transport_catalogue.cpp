@@ -1,13 +1,12 @@
 #include "transport_catalogue.h"
 
 #include <cstdint>
-#include <iostream>
 #include <set>
 #include <utility>
 
 namespace tc {
 
-size_t StopPtrHasher::operator()(
+size_t TransportCatalogue::StopPtrHasher::operator()(
     const std::pair<const Stop*, const Stop*> stop_ptr_pair) const {
     const std::uintptr_t kSalt = 37;
 
@@ -99,7 +98,7 @@ BusInfo TransportCatalogue::GetBusInfo(std::string_view bus_name) const {
     double route_length = 0.0;
     for (int i = 1; std::cmp_less(i, kStopCount); ++i) {
         const int kDist =
-            GetDistance({found_bus->route[i - 1], found_bus->route[i]});
+            GetDistance(found_bus->route[i - 1], found_bus->route[i]);
 
         route_length += static_cast<double>(kDist);
     }
@@ -113,37 +112,34 @@ BusInfo TransportCatalogue::GetBusInfo(std::string_view bus_name) const {
     };
 }
 
-void TransportCatalogue::SetDistance(
-    std::string_view stop,
-    const std::vector<std::pair<std::string_view, int>>& distances) {
-    const Stop* stop_a{FindStop(stop)};
-
-    if (nullptr == stop_a || distances.empty()) {
+void TransportCatalogue::SetDistance(std::string_view stop_a,
+                                     std::string_view stop_b, int dist) {
+    const Stop* stop_a_ptr{FindStop(stop_a)};
+    if (nullptr == stop_a_ptr) {
         return;
     }
 
-    for (auto dist : distances) {
-        const Stop* stop_b{FindStop(dist.first)};
-        if (nullptr == stop_b) {
-            continue;
-        }
-
-        distance_.insert({{stop_a, stop_b}, dist.second});
+    const Stop* stop_b_ptr{FindStop(stop_b)};
+    if (nullptr == stop_b_ptr) {
+        return;
     }
+
+    distance_.insert({{stop_a_ptr, stop_b_ptr}, dist});
 }
 
-int TransportCatalogue::GetDistance(
-    std::pair<const Stop*, const Stop*> stop_ptr_pair) const noexcept {
-    auto found_a_to_b{distance_.find(stop_ptr_pair)};
+int TransportCatalogue::GetDistance(const Stop* stop_a_ptr,
+                                    const Stop* stop_b_ptr) const noexcept {
+    auto found_a_to_b{distance_.find({stop_a_ptr, stop_b_ptr})};
 
     if (found_a_to_b == distance_.cend()) {
-        auto found_b_to_a{
-            distance_.find({stop_ptr_pair.second, stop_ptr_pair.first})};
+        auto found_b_to_a{distance_.find({stop_b_ptr, stop_a_ptr})};
 
         return (found_b_to_a != distance_.cend()) ? found_b_to_a->second : 0;
     }
 
     return found_a_to_b->second;
+
+    return 0;
 }
 
 }  // namespace tc

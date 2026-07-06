@@ -29,12 +29,6 @@ struct BusInfo {
     double curvature;
 };
 
-struct StopPtrHasher {
-    size_t operator()(std::pair<const Stop*, const Stop*> stop_ptr_pair) const;
-
-    std::hash<std::uintptr_t> hasher;
-};
-
 class TransportCatalogue {
 public:
     void AddStop(const Stop& stop);
@@ -52,16 +46,20 @@ public:
 
     [[nodiscard]] BusInfo GetBusInfo(std::string_view bus_name) const;
 
-    void SetDistance(std::pair<const Stop*, const Stop*> stops, int dist);
+    void SetDistance(std::string_view stop_a, std::string_view stop_b,
+                     int dist);
 
-    void SetDistance(
-        std::string_view stop,
-        const std::vector<std::pair<std::string_view, int>>& distances);
-
-    [[nodiscard]] int GetDistance(
-        std::pair<const Stop*, const Stop*> stop_ptr_pair) const noexcept;
+    [[nodiscard]] int GetDistance(const Stop* stop_a_ptr,
+                                  const Stop* stop_b_ptr) const noexcept;
 
 private:
+    struct StopPtrHasher {
+        size_t operator()(
+            std::pair<const Stop*, const Stop*> stop_ptr_pair) const;
+
+        std::hash<std::uintptr_t> hasher;
+    };
+
     std::deque<Stop> stops_;
 
     std::unordered_map<std::string_view, const Stop*> stopname_to_stop_;
