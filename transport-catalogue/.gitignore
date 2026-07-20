@@ -1,2 +1,5 @@
 build/
 .qtcreator/
+*.json
+*.zip
+*.svg

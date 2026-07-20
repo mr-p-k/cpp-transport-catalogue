@@ -1,35 +1,48 @@
-#include <cassert>
+#include <cstdlib>
 #include <iostream>
-#include <string>
 
-#include "input_reader.h"
-#include "stat_reader.h"
+#include "json_reader.h"
+#include "map_renderer.h"
+#include "request_handler.h"
 
-using namespace std;
+class App final {
+public:
+    explicit App(std::istream& in, std::ostream& out) : in_(in), out_(out) {
+    }
+
+    App(const App&) = delete;
+    App(App&&) = delete;
+
+    App& operator=(const App&) = delete;
+    App& operator=(App&&) = delete;
+
+    ~App() = default;
+
+    void Run() const {
+        tc::TransportCatalogue db;
+
+        json_reader::JsonReader reader{json_reader::ReadJSON(in_)};
+
+        reader.ParseBaseRequests();
+
+        reader.ApplyBaseRequests(db);
+
+        renderer::MapRenderer renderer(reader.ParseRenderSettings());
+
+        request_handler::RequestHandler rhandler{db, renderer};
+
+        reader.PrintStatRequests(out_, rhandler);
+        // rhandler.RenderMap().Render(out_);
+    }
+
+private:
+    std::istream& in_;
+    std::ostream& out_;
+};
 
 int main() {
-    tc::TransportCatalogue catalogue;
+    const App kApp(std::cin, std::cout);
+    kApp.Run();
 
-    int base_request_count = 0;
-    cin >> base_request_count >> ws;
-
-    {
-        reader::InputReader reader;
-        for (int i = 0; i < base_request_count; ++i) {
-            string line;
-            getline(cin, line);
-            reader.ParseLine(line);
-        }
-        reader.ApplyCommands(catalogue);
-    }
-
-    int stat_request_count = 0;
-    cin >> stat_request_count >> ws;
-    for (int i = 0; i < stat_request_count; ++i) {
-        string line;
-        getline(cin, line);
-        stat::ParseAndPrintStat(catalogue, line, cout);
-    }
-
-    return 0;
+    return EXIT_SUCCESS;
 }
