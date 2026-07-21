@@ -1,5 +1,7 @@
 #include "map_renderer.h"
 
+#include <algorithm>
+
 /*
  * В этом файле вы можете разместить код, отвечающий за визуализацию карты
  * маршрутов в формате SVG. Визуализация маршртутов вам понадобится во второй
@@ -8,7 +10,9 @@
 
 namespace renderer {
 
-SphereProjector MakeProjector(const std::vector<const Bus*> buses,
+namespace {
+
+SphereProjector MakeProjector(const std::vector<const Bus*>& buses,
                               const RenderSettings& settings) {
     std::vector<geo::Coordinates> geo_coords;
     geo_coords.reserve(buses.size());
@@ -23,17 +27,32 @@ SphereProjector MakeProjector(const std::vector<const Bus*> buses,
                            settings.width, settings.height, settings.padding);
 }
 
-MapRenderer::MapRenderer(RenderSettings settings) : settings_(settings) {
+}  // namespace
+
+MapRenderer::MapRenderer(const RenderSettings& settings) : settings_(settings) {
 }
 
-svg::Document MapRenderer::Render(const std::vector<const Bus*>& routes,
+svg::Document MapRenderer::Render(const std::vector<const Bus*>& buses,
                                   const std::vector<const Stop*>& stops) const {
-    const SphereProjector proj{MakeProjector(routes, settings_)};
+    auto copy_buses{buses};
+    auto copy_stops{stops};
+
+    return Render(std::move(copy_buses), std::move(copy_stops));
+}
+
+svg::Document MapRenderer::Render(std::vector<const Bus*>&& buses,
+                                  std::vector<const Stop*>&& stops) const {
+    // sort buses and stops vectors
+    std::ranges::sort(buses, Comparator<Bus>{});
+    std::ranges::sort(stops, Comparator<Stop>{});
+
+    const SphereProjector proj{MakeProjector(buses, settings_)};
 
     svg::Document image;
 
-    RenderRouteLines(routes, image, proj);
-    RenderRouteNames(routes, image, proj);
+    // render image
+    RenderRouteLines(buses, image, proj);
+    RenderRouteNames(buses, image, proj);
     RenderStopCircles(stops, image, proj);
     RenderStopNames(stops, image, proj);
 
