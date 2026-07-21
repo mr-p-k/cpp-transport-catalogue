@@ -100,6 +100,15 @@ private:
     double zoom_coeff_ = 0;
 };
 
+template <typename T>
+struct Comparator {
+    bool operator()(const T* lhs, const T* rhs) {
+        return std::lexicographical_compare(
+            lhs->name.cbegin(), lhs->name.cend(), rhs->name.cbegin(),
+            rhs->name.cend());
+    }
+};
+
 }  // namespace
 
 struct RenderSettings {
@@ -125,10 +134,13 @@ struct RenderSettings {
 
 class MapRenderer {
 public:
-    explicit MapRenderer(RenderSettings settings);
+    explicit MapRenderer(const RenderSettings& settings);
 
     svg::Document Render(const std::vector<const Bus*>& routes,
                          const std::vector<const Stop*>& stops) const;
+
+    svg::Document Render(std::vector<const Bus*>&& routes,
+                         std::vector<const Stop*>&& stops) const;
 
 private:
     void RenderRouteLines(const std::vector<const Bus*>& routes,

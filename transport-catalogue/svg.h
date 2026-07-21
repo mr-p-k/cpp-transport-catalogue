@@ -31,15 +31,15 @@ std::ostream& operator<<(std::ostream& out, StrokeLineCap line_cap);
 std::ostream& operator<<(std::ostream& out, StrokeLineJoin line_join);
 
 struct Rgb {
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
+    uint8_t red = 0;
+    uint8_t green = 0;
+    uint8_t blue = 0;
 };
 
 struct Rgba {
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
+    uint8_t red = 0;
+    uint8_t green = 0;
+    uint8_t blue = 0;
     double opacity = 1.0;
 };
 

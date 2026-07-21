@@ -54,6 +54,66 @@ const Bus* TransportCatalogue::FindBus(
     return (it != busname_to_bus_.cend() ? it->second : nullptr);
 }
 
+std::optional<BusInfo> TransportCatalogue::GetBusInfo(
+    std::string_view bus_name) const {
+    //
+    const Bus* found_bus{FindBus(bus_name)};
+    if (nullptr == found_bus) {
+        return std::nullopt;
+    }
+
+    const size_t route_size{found_bus->route.size()};
+
+    const size_t kStopCount =
+        (found_bus->is_roundtrip ? route_size : (2 * route_size) - 1);
+    const size_t kUniqueStopsCount = ComputeUnique(found_bus->route);
+
+    double geo_length = 0.0;
+    int route_length = 0;
+
+    for (auto it = found_bus->route.cbegin(); it != found_bus->route.cend();
+         ++it) {  //
+        if (auto next_it{std::next(it, 1)};
+            next_it != found_bus->route.cend()) {  //
+            geo_length += geo::ComputeDistance((*it)->coordinates,
+                                               (*next_it)->coordinates);
+
+            route_length += GetDistance(*it, *next_it);
+        }
+    }
+
+    if (!found_bus->is_roundtrip) {
+        for (auto it = found_bus->route.crbegin();
+             it != found_bus->route.crend(); ++it) {  //
+            if (auto next_it{std::next(it, 1)};
+                next_it != found_bus->route.crend()) {  //
+                geo_length += geo::ComputeDistance((*it)->coordinates,
+                                                   (*next_it)->coordinates);
+
+                route_length += GetDistance(*it, *next_it);
+            }
+        }
+    }
+
+    return BusInfo{
+        .name{found_bus->name},
+        .stops = kStopCount,
+        .unique_stops = kUniqueStopsCount,
+        .route_length = route_length,
+        .curvature = static_cast<double>(route_length) / geo_length,
+    };
+}
+
+const std::set<std::string_view>& TransportCatalogue::GetBusesByStop(
+    std::string_view stop_name) const {
+    //
+    static const std::set<std::string_view> kBlank{};
+
+    auto it = buses_by_stop_.find(stop_name);
+
+    return (it != buses_by_stop_.cend() ? it->second : kBlank);
+}
+
 void TransportCatalogue::SetDistance(std::string_view stop_a,
                                      std::string_view stop_b, int dist) {
     const Stop* stop_a_ptr{FindStop(stop_a)};
@@ -84,13 +144,35 @@ int TransportCatalogue::GetDistance(const Stop* stop_a_ptr,
     return 0;
 }
 
-const std::unordered_map<std::string_view, std::set<std::string_view>>&
-TransportCatalogue::GetBusesByStop() const noexcept {
-    return buses_by_stop_;
+std::vector<const Bus*> TransportCatalogue::GetAllBusesWithStops() const {
+    std::vector<const Bus*> buses_with_stops;
+
+    for (const auto& bus : buses_) {
+        if (!bus.route.empty()) {
+            buses_with_stops.emplace_back(&bus);
+        }
+    }
+
+    return buses_with_stops;
 }
 
-const std::deque<Bus>& TransportCatalogue::GetBuses() const noexcept {
-    return buses_;
+std::vector<const Stop*> TransportCatalogue::GetAllStopsInRoutes() const {
+    std::vector<const Stop*> stops;
+
+    for (const auto& [stop_name, route] : buses_by_stop_) {
+        if (route.empty()) {
+            continue;
+        }
+
+        const Stop* stop_ptr{FindStop(stop_name)};
+        if (nullptr == stop_ptr) {
+            continue;
+        }
+
+        stops.emplace_back(stop_ptr);
+    }
+
+    return stops;
 }
 
 size_t TransportCatalogue::StopPtrHasher::operator()(
@@ -101,14 +183,6 @@ size_t TransportCatalogue::StopPtrHasher::operator()(
     auto s2{reinterpret_cast<std::uintptr_t>(stop_ptr_pair.second)};
 
     return hasher(s1 + (s2 * kSalt));
-}
-
-size_t TransportCatalogue::GetStopsSize() const noexcept {
-    return stops_.size();
-}
-
-size_t TransportCatalogue::GetBusesSize() const noexcept {
-    return buses_.size();
 }
 
 }  // namespace tc
