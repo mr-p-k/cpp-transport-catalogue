@@ -12,6 +12,7 @@ add_executable(${PROJECT_NAME} main.cpp
     geo.h geo.cpp
     json.h json.cpp
     json_reader.h json_reader.cpp
+    json_builder.h json_builder.cpp
     map_renderer.h map_renderer.cpp
     request_handler.h request_handler.cpp
     svg.h svg.cpp

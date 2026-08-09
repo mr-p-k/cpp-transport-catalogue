@@ -4,6 +4,8 @@
 #include <cassert>
 #include <sstream>
 
+#include "json_builder.h"
+
 /*
  * Здесь можно разместить код наполнения транспортного справочника данными из
  * JSON, а также код обработки запросов к базе и формирование массива ответов в
@@ -14,7 +16,7 @@ namespace json_reader {
 
 std::vector<std::pair<std::string_view, int>> ParseDistance(
     const Node& distances) {
-    const auto& distances_map{distances.AsMap()};
+    const auto& distances_map{distances.AsDict()};
     std::vector<std::pair<std::string_view, int>> result;
     result.reserve(distances_map.size());
 
@@ -32,7 +34,7 @@ std::vector<std::pair<std::string_view, int>> ParseDistance(
 std::vector<std::string_view> ParseRoute(const Node& route) {
     using std::string_literals::operator""s;
 
-    const auto& route_map{route.AsMap()};
+    const auto& route_map{route.AsDict()};
 
     const auto& stops_arr{route_map.at("stops"s).AsArray()};
 
@@ -51,6 +53,7 @@ std::vector<std::string_view> ParseRoute(const Node& route) {
 
 renderer::Color ParseColor(const Node& node) {
     renderer::Color color;
+
     if (node.IsArray()) {
         const auto& arr{node.AsArray()};
 
@@ -58,19 +61,20 @@ renderer::Color ParseColor(const Node& node) {
         const size_t kRGBASize = 4;
 
         if (kRGBSize == arr.size()) {
-            uint8_t red = static_cast<uint8_t>(arr.at(0).AsInt());
-            uint8_t green = static_cast<uint8_t>(arr.at(1).AsInt());
-            uint8_t blue = static_cast<uint8_t>(arr.at(2).AsInt());
+            const auto kRed = static_cast<uint8_t>(arr.at(0).AsInt());
+            const auto kGreen = static_cast<uint8_t>(arr.at(1).AsInt());
+            const auto kBlue = static_cast<uint8_t>(arr.at(2).AsInt());
 
-            color = renderer::Rgb{red, green, blue};
+            color = renderer::Rgb{.red = kRed, .green = kGreen, .blue = kBlue};
 
         } else if (kRGBASize == arr.size()) {
-            uint8_t red = static_cast<uint8_t>(arr.at(0).AsInt());
-            uint8_t green = static_cast<uint8_t>(arr.at(1).AsInt());
-            uint8_t blue = static_cast<uint8_t>(arr.at(2).AsInt());
-            double alpha = arr.at(3).AsDouble();
+            const auto kRed = static_cast<uint8_t>(arr.at(0).AsInt());
+            const auto kGreen = static_cast<uint8_t>(arr.at(1).AsInt());
+            const auto kBlue = static_cast<uint8_t>(arr.at(2).AsInt());
+            const double kAlpha = arr.at(3).AsDouble();
 
-            color = renderer::Rgba{red, green, blue, alpha};
+            color = renderer::Rgba{
+                .red = kRed, .green = kGreen, .blue = kBlue, .opacity = kAlpha};
         }
     } else if (node.IsString()) {
         color = node.AsString();
@@ -82,35 +86,41 @@ renderer::Color ParseColor(const Node& node) {
 Node CreateErrorNode(const int id) {
     using std::string_literals::operator""s;
 
-    json::Dict error;
-
-    error["request_id"s] = id;
-    error["error_message"s] = "not found"s;
-
-    return Node{std::move(error)};
+    return json::Builder{}
+        .StartDict()
+        .Key("request_id"s)
+        .Value(id)
+        .Key("error_message"s)
+        .Value("not found"s)
+        .EndDict()
+        .Build();
 }
 
 Node CreateBusInfoNode(const int id, const std::string_view name,
                        const RequestHandler& rhandler) {
+    //
     using std::string_literals::operator""s;
 
-    Node result;
+    json::Builder result;
 
     if (const auto kBusInfo{rhandler.GetBusInfo(name)}; kBusInfo.has_value()) {
-        json::Dict node;
-
-        node["request_id"s] = id;
-        node["route_length"s] = kBusInfo->route_length;
-        node["stop_count"s] = static_cast<int>(kBusInfo->stops);
-        node["unique_stop_count"s] = static_cast<int>(kBusInfo->unique_stops);
-        node["curvature"s] = kBusInfo->curvature;
-
-        result = std::move(node);
+        result.StartDict()
+            .Key("request_id"s)
+            .Value(id)
+            .Key("route_length"s)
+            .Value(kBusInfo->route_length)
+            .Key("stop_count"s)
+            .Value(static_cast<int>(kBusInfo->stops))
+            .Key("unique_stop_count"s)
+            .Value(static_cast<int>(kBusInfo->unique_stops))
+            .Key("curvature"s)
+            .Value(kBusInfo->curvature)
+            .EndDict();
     } else {
-        result = CreateErrorNode(id);
+        result.Value(CreateErrorNode(id).GetValue());
     }
 
-    return result;
+    return result.Build();
 }
 
 Node CreateStopInfoNode(const int id, const std::string_view name,
@@ -121,27 +131,26 @@ Node CreateStopInfoNode(const int id, const std::string_view name,
         return CreateErrorNode(id);
     }
 
-    json::Dict node;
-    node["request_id"s] = id;
+    json::Builder result;
+    result.StartDict().Key("request_id"s).Value(id);
 
     if (const auto& kBusesByStop{rhandler.GetBusesByStop(name)};
         !kBusesByStop.empty()) {
-        json::Array buses;
-        buses.reserve(kBusesByStop.size());
+        //
+        json::Builder buses;
 
-        auto transformer = [](std::string_view bus_name) -> Node {
-            return Node{std::string{bus_name}};
-        };
+        buses.StartArray();
 
-        std::ranges::transform(kBusesByStop, std::back_inserter(buses),
-                               transformer);
+        for (const std::string_view kBus : kBusesByStop) {
+            buses.Value(std::string{kBus});
+        }
 
-        node["buses"s] = std::move(buses);
+        result.Key("buses"s).Value(buses.EndArray().Build().GetValue());
     } else {
-        node["buses"s] = json::Array{};
+        result.Key("buses"s).StartArray().EndArray();
     }
 
-    return Node{node};
+    return result.EndDict().Build();
 }
 
 Node CreateMapInfoNode(const int id, const RequestHandler& rhandler) {
@@ -149,12 +158,14 @@ Node CreateMapInfoNode(const int id, const RequestHandler& rhandler) {
     std::ostringstream sstream;
     rhandler.RenderMap().Render(sstream);
 
-    json::Dict node;
-
-    node["request_id"s] = id;
-    node["map"s] = sstream.str();
-
-    return Node{node};
+    return json::Builder{}
+        .StartDict()
+        .Key("request_id"s)
+        .Value(id)
+        .Key("map"s)
+        .Value(sstream.str())
+        .EndDict()
+        .Build();
 }
 
 Document ReadJSON(std::istream& in) {
@@ -171,7 +182,7 @@ void JsonReader::ParseBaseRequests() {
         GetRequestsNode("base_requests"s).AsArray()};
 
     for (const auto& request_node : stat_requests_array) {
-        const auto& request_map{request_node.AsMap()};
+        const auto& request_map{request_node.AsDict()};
 
         if (auto it = request_map.find("type"s); it != request_map.cend()) {
             if ("Stop"s == it->second) {
@@ -186,9 +197,8 @@ void JsonReader::ParseBaseRequests() {
 RenderSettings JsonReader::ParseRenderSettings() const {
     using std::string_literals::operator""s;
 
-    [[maybe_unused]]
     const auto& render_settings_map{
-        GetRequestsNode("render_settings"s).AsMap()};
+        GetRequestsNode("render_settings"s).AsDict()};
 
     RenderSettings result;
 
@@ -248,11 +258,11 @@ void JsonReader::PrintStatRequests(std::ostream& out,
 
     const auto& stat_requests_arr{GetRequestsNode("stat_requests"s).AsArray()};
 
-    json::Array arr{};
-    arr.reserve(stat_requests_arr.size());
+    json::Builder result;
+    result.StartArray();
 
     for (const auto& stat_request_node : stat_requests_arr) {
-        const auto& stat_request_map{stat_request_node.AsMap()};
+        const auto& stat_request_map{stat_request_node.AsDict()};
 
         const int kID = stat_request_map.at("id"s).AsInt();
         const std::string_view kType{stat_request_map.at("type"s).AsString()};
@@ -260,34 +270,33 @@ void JsonReader::PrintStatRequests(std::ostream& out,
         if ("Bus"s == kType) {
             const std::string_view kName{
                 stat_request_map.at("name"s).AsString()};
-            arr.emplace_back(CreateBusInfoNode(kID, kName, rhandler));
+            result.Value(CreateBusInfoNode(kID, kName, rhandler).GetValue());
         } else if ("Stop"s == kType) {
             const std::string_view kName{
                 stat_request_map.at("name"s).AsString()};
-            arr.emplace_back(CreateStopInfoNode(kID, kName, rhandler));
+            result.Value(CreateStopInfoNode(kID, kName, rhandler).GetValue());
         } else if ("Map"s == kType) {
-            // TODO add map svg document
-            arr.emplace_back(CreateMapInfoNode(kID, rhandler));
+            result.Value(CreateMapInfoNode(kID, rhandler).GetValue());
         }
     }
 
-    json::Print(Document{arr}, out);
+    json::Print(Document{result.EndArray().Build()}, out);
 }
 
 const Node& JsonReader::GetRequestsNode(const std::string& key) const {
     using std::string_literals::operator""s;
 
     const Node& root = requests_.GetRoot();
-    if (!root.IsMap()) {
+    if (!root.IsDict()) {
         throw json::ParsingError("wrong input json format, expect map"s);
     }
 
-    const auto& dict{root.AsMap()};
+    const auto& dict{root.AsDict()};
     const auto kIt = dict.find(key);
     if (kIt == dict.cend()) {
         throw json::ParsingError("expect \""s + key + "\" map object"s);
     }
-    if (!kIt->second.IsArray() && !kIt->second.IsMap()) {
+    if (!kIt->second.IsArray() && !kIt->second.IsDict()) {
         throw json::ParsingError("wrong \""s + key +
                                  "\" node type, expect array or map"s);
     }
@@ -300,7 +309,7 @@ void JsonReader::ApplyBaseStopRequests(tc::TransportCatalogue& db) const {
 
     // fill base with stops (name+coordinates) only
     for (const auto* request : base_stop_requests_) {
-        const auto& req_map{request->AsMap()};
+        const auto& req_map{request->AsDict()};
 
         const std::string_view kName{req_map.at("name"s).AsString()};
         const double kLat = req_map.at("latitude"s).AsDouble();
@@ -311,7 +320,7 @@ void JsonReader::ApplyBaseStopRequests(tc::TransportCatalogue& db) const {
 
     // fill distances between stops
     for (const auto* request : base_stop_requests_) {
-        const auto& req_map{request->AsMap()};
+        const auto& req_map{request->AsDict()};
 
         const auto& distances_node{req_map.at("road_distances"s)};
 
@@ -331,8 +340,9 @@ void JsonReader::ApplyBaseBusRequests(tc::TransportCatalogue& db) const {
     using std::string_literals::operator""s;
 
     for (const auto* request : base_bus_requests_) {
-        const bool kIsRoundtrip = request->AsMap().at("is_roundtrip"s).AsBool();
-        const std::string_view kName{request->AsMap().at("name"s).AsString()};
+        const bool kIsRoundtrip =
+            request->AsDict().at("is_roundtrip"s).AsBool();
+        const std::string_view kName{request->AsDict().at("name"s).AsString()};
 
         const std::vector<std::string_view> kRoute{ParseRoute(*request)};
 

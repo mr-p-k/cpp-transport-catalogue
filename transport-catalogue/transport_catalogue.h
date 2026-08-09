@@ -11,16 +11,6 @@
 
 namespace tc {
 
-namespace {
-template <typename T>
-size_t ComputeUnique(const std::vector<T>& vec) {
-    std::set<T> tmp{vec.cbegin(), vec.cend()};
-
-    return tmp.size();
-}
-
-}  // namespace
-
 struct StopPtrHasher;
 
 using domain::Bus;
@@ -56,6 +46,13 @@ public:
     [[nodiscard]] std::vector<const Stop*> GetAllStopsInRoutes() const;
 
 private:
+    template <typename T>
+    size_t ComputeUnique(const std::vector<T>& vec) const {
+        std::set<T> tmp{vec.cbegin(), vec.cend()};
+
+        return tmp.size();
+    }
+
     struct StopPtrHasher {
         std::hash<std::uintptr_t> hasher;
 
