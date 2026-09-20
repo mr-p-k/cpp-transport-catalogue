@@ -50,10 +50,6 @@ public:
 
     [[nodiscard]] const std::deque<Stop>& GetStops() const;
 
-    [[nodiscard]] const std::unordered_map<std::pair<const Stop*, const Stop*>,
-                                           int, StopPtrHasher>&
-    GetDistances() const;
-
 private:
     template <typename T>
     size_t ComputeUnique(const std::vector<T>& vec) const {

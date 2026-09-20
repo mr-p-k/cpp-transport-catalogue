@@ -5,6 +5,7 @@
 
 #include "map_renderer.h"
 #include "transport_catalogue.h"
+#include "transport_router.h"
 
 namespace request_handler {
 
@@ -12,7 +13,15 @@ using Bus = domain::Bus;
 
 using BusInfo = domain::BusInfo;
 
+using MapRenderer = renderer::MapRenderer;
+
+using RouteResult = router::RouteResult;
+
 using Stop = domain::Stop;
+
+using TransportCatalogue = tc::TransportCatalogue;
+
+using TransportRouter = router::TransportRouter;
 
 class RequestHandler {
 private:
@@ -23,8 +32,8 @@ private:
 public:
     RequestHandler() = delete;
 
-    RequestHandler(const tc::TransportCatalogue& db,
-                   const renderer::MapRenderer& renderer);
+    RequestHandler(const TransportCatalogue& db, const MapRenderer& renderer,
+                   const TransportRouter& router);
 
     RequestHandler(const RequestHandler& other) = delete;
 
@@ -44,26 +53,17 @@ public:
 
     [[nodiscard]] bool IsStopExists(std::string_view name) const;
 
-    [[nodiscard]] const std::deque<const Bus*> GetNonEmptyRoutes() const;
-
-    [[nodiscard]] const std::deque<const Stop*> GetStopsWithBuses() const;
-
     [[nodiscard]] svg::Document RenderMap() const;
 
-    [[nodiscard]] const std::deque<Stop>& GetAllStops() const;
-
-    [[nodiscard]] const std::deque<Bus>& GetAllBuses() const;
-
-    [[nodiscard]] std::optional<int> GetDistance(const Stop* from_ptr,
-                                                 const Stop* to_ptr) const;
-
-    [[nodiscard]] const Stop* FindStop(
-        std::string_view stop_name) const noexcept;
+    [[nodiscard]] std::optional<RouteResult> FindRoute(
+        std::string_view from, std::string_view to) const;
 
 private:
-    const tc::TransportCatalogue& db_;
+    const TransportCatalogue& db_;
 
-    const renderer::MapRenderer& renderer_;
+    const MapRenderer& renderer_;
+
+    const TransportRouter& router_;
 };
 
 }  // namespace request_handler

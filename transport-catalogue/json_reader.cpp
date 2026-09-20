@@ -168,22 +168,21 @@ Node CreateMapInfoNode(const int id, const RequestHandler& rhandler) {
         .Build();
 }
 
-Node CreateRouteNode(const int id, const TransportRouter& router,
+Node CreateRouteNode(const int id, const RequestHandler& rhandler,
                      std::string_view from, std::string_view to) {
     using std::string_literals::operator""s;
 
-    json::Builder result;
-
-    auto route = router.FindRoute(from, to);
-    result.StartDict().Key("request_id"s).Value(id);
+    auto route = rhandler.FindRoute(from, to);
 
     if (!route.has_value()) {
-        result.Key("error_message"s).Value("not found"s);
-
-        return result.EndDict().Build();
+        return CreateErrorNode(id);
     }
 
-    result.Key("total_time"s)
+    json::Builder result;
+    result.StartDict()
+        .Key("request_id"s)
+        .Value(id)
+        .Key("total_time"s)
         .Value(route->total_time)
         .Key("items"s)
         .StartArray();
@@ -306,8 +305,8 @@ void JsonReader::ApplyBaseRequests(tc::TransportCatalogue& db) const {
 }
 
 void JsonReader::PrintStatRequests(std::ostream& out,
-                                   const RequestHandler& rhandler,
-                                   const TransportRouter& router) const {
+                                   const RequestHandler& rhandler/*,
+                                   const TransportRouter& router*/) const {
     using std::string_literals::operator""s;
 
     const auto& stat_requests_arr{GetRequestsNode("stat_requests"s).AsArray()};
@@ -336,7 +335,9 @@ void JsonReader::PrintStatRequests(std::ostream& out,
                 stat_request_map.at("from"s).AsString()};
             const std::string_view kTo{stat_request_map.at("to"s).AsString()};
 
-            result.Value(CreateRouteNode(kID, router, kFrom, kTo).GetValue());
+            // result.Value(CreateRouteNode(kID, router, kFrom,
+            // kTo).GetValue());
+            result.Value(CreateRouteNode(kID, rhandler, kFrom, kTo).GetValue());
         }
     }
 
