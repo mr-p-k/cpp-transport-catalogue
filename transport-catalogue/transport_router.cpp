@@ -13,8 +13,8 @@ std::optional<size_t> TransportRouter::GetStopIndex(const Stop* stop) const {
 }
 
 TransportRouter::TransportRouter(RoutingSettings settings,
-                                 const RequestHandler& rhandler)
-    : settings_(settings), rhandler_(rhandler) {
+                                 const TransportCatalogue& tc)
+    : settings_(settings), tc_(tc) {
     //
     MakeGraph();
 
@@ -22,7 +22,7 @@ TransportRouter::TransportRouter(RoutingSettings settings,
 }
 
 void TransportRouter::MakeGraph() {
-    const auto& all_stops{rhandler_.GetAllStops()};
+    const auto& all_stops{tc_.GetStops()};
 
     // increase the storage twice, for Wait and Bus edges
     graph_ = DirectedWeightedGraph(all_stops.size() * 2);
@@ -32,7 +32,7 @@ void TransportRouter::MakeGraph() {
     AddWaitEdges(all_stops.cbegin(), all_stops.cend());
 
     // fill bus edges
-    const auto& all_buses{rhandler_.GetAllBuses()};
+    const auto& all_buses{tc_.GetBuses()};
 
     for (const auto& bus : all_buses) {
         const auto& bus_stops{bus.route};
@@ -48,12 +48,12 @@ void TransportRouter::MakeGraph() {
 std::optional<RouteResult> TransportRouter::FindRoute(
     std::string_view from, std::string_view to) const {
     //
-    const Stop* from_ptr = rhandler_.FindStop(from);
+    const Stop* from_ptr = tc_.FindStop(from);
     if (nullptr == from_ptr) {
         return std::nullopt;
     }
 
-    const Stop* to_ptr = rhandler_.FindStop(to);
+    const Stop* to_ptr = tc_.FindStop(to);
     if (nullptr == to_ptr) {
         return std::nullopt;
     }

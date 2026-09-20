@@ -13,9 +13,11 @@ public:
     }
 
     App(const App&) = delete;
+
     App(App&&) = delete;
 
     App& operator=(const App&) = delete;
+
     App& operator=(App&&) = delete;
 
     ~App() = default;
@@ -31,16 +33,17 @@ public:
 
         const renderer::MapRenderer kRenderer(reader.ParseRenderSettings());
 
-        const request_handler::RequestHandler kRHandler{db, kRenderer};
-
         const router::TransportRouter kRouter(reader.ParseRoutingSettings(),
-                                              kRHandler);
+                                              db);
 
-        reader.PrintStatRequests(out_, kRHandler, kRouter);
+        const request_handler::RequestHandler kRHandler{db, kRenderer, kRouter};
+
+        reader.PrintStatRequests(out_, kRHandler);
     }
 
 private:
     std::istream& in_;
+
     std::ostream& out_;
 };
 

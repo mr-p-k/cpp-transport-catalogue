@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "graph.h"
-#include "request_handler.h"
 #include "router.h"
 #include "transport_catalogue.h"
 
@@ -13,8 +12,6 @@ namespace router {
 struct Time;
 
 using DirectedWeightedGraph = graph::DirectedWeightedGraph<Time>;
-
-using RequestHandler = request_handler::RequestHandler;
 
 using Router = graph::Router<Time>;
 
@@ -78,7 +75,7 @@ private:
 
 public:
     explicit TransportRouter(RoutingSettings settings,
-                             const RequestHandler& rhandler);
+                             const TransportCatalogue& tc);
 
     void MakeGraph();
 
@@ -88,7 +85,7 @@ public:
 private:
     RoutingSettings settings_;
 
-    const RequestHandler& rhandler_;
+    const TransportCatalogue& tc_;
 
     std::unordered_map<const Stop*, size_t> stop_to_index_;
 
@@ -119,7 +116,7 @@ void TransportRouter::AddBusEdges(InputIt first, InputIt last,
                 continue;
             }
 
-            const auto kDistance = rhandler_.GetDistance(from_ptr, to_ptr);
+            const auto kDistance = tc_.GetDistance(from_ptr, to_ptr);
 
             accumulated_time +=
                 static_cast<double>(kDistance.value_or(0.0)) /

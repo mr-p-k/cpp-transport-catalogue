@@ -26,6 +26,8 @@ using RoutingSettings = router::RoutingSettings;
 
 using TransportRouter = router::TransportRouter;
 
+using TransportCatalogue = tc::TransportCatalogue;
+
 Document ReadJSON(std::istream& in);
 
 class JsonReader final {
@@ -38,17 +40,17 @@ public:
 
     [[nodiscard]] RoutingSettings ParseRoutingSettings() const;
 
-    void ApplyBaseRequests(tc::TransportCatalogue& db) const;
+    void ApplyBaseRequests(TransportCatalogue& db) const;
 
-    void PrintStatRequests(std::ostream& out, const RequestHandler& rhandler,
-                           const TransportRouter& router) const;
+    void PrintStatRequests(std::ostream& out, const RequestHandler& rhandler/*,
+                           const TransportRouter& router*/) const;
 
 private:
     [[nodiscard]] const Node& GetRequestsNode(const std::string& key) const;
 
-    void ApplyBaseStopRequests(tc::TransportCatalogue& db) const;
+    void ApplyBaseStopRequests(TransportCatalogue& db) const;
 
-    void ApplyBaseBusRequests(tc::TransportCatalogue& db) const;
+    void ApplyBaseBusRequests(TransportCatalogue& db) const;
 
     Document requests_;
 

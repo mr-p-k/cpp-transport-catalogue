@@ -2,9 +2,10 @@
 
 namespace request_handler {
 
-RequestHandler::RequestHandler(const tc::TransportCatalogue& db,
-                               const renderer::MapRenderer& renderer)
-    : db_(db), renderer_(renderer) {
+RequestHandler::RequestHandler(const TransportCatalogue& db,
+                               const MapRenderer& renderer,
+                               const TransportRouter& router)
+    : db_(db), renderer_(renderer), router_(router) {
 }
 
 std::optional<BusInfo> RequestHandler::GetBusInfo(
@@ -35,22 +36,9 @@ svg::Document RequestHandler::RenderMap() const {
     return renderer_.Render(GetAllBusesWithStops(), GetAllStopsInRoutes());
 }
 
-const std::deque<Stop>& RequestHandler::GetAllStops() const {
-    return db_.GetStops();
-}
-
-const std::deque<Bus>& RequestHandler::GetAllBuses() const {
-    return db_.GetBuses();
-}
-
-std::optional<int> RequestHandler::GetDistance(const Stop* from_ptr,
-                                               const Stop* to_ptr) const {
-    return db_.GetDistance(from_ptr, to_ptr);
-}
-
-const Stop* RequestHandler::FindStop(
-    std::string_view stop_name) const noexcept {
-    return db_.FindStop(stop_name);
+std::optional<RouteResult> RequestHandler::FindRoute(
+    std::string_view from, std::string_view to) const {
+    return router_.FindRoute(from, to);
 }
 
 }  // namespace request_handler

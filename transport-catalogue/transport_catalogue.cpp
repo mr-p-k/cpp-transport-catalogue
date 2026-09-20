@@ -31,12 +31,6 @@ const std::deque<Stop>& TransportCatalogue::GetStops() const {
     return stops_;
 }
 
-const std::unordered_map<std::pair<const Stop*, const Stop*>, int,
-                         StopPtrHasher>&
-TransportCatalogue::GetDistances() const {
-    return distances_;
-}
-
 void TransportCatalogue::AddBus(std::string_view name,
                                 const std::vector<std::string_view>& route,
                                 bool is_roundtrip) {
