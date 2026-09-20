@@ -8,11 +8,18 @@
 
 namespace request_handler {
 
-using domain::Bus;
-using domain::BusInfo;
-using domain::Stop;
+using Bus = domain::Bus;
+
+using BusInfo = domain::BusInfo;
+
+using Stop = domain::Stop;
 
 class RequestHandler {
+private:
+    [[nodiscard]] std::vector<const Bus*> GetAllBusesWithStops() const;
+
+    [[nodiscard]] std::vector<const Stop*> GetAllStopsInRoutes() const;
+
 public:
     RequestHandler() = delete;
 
@@ -41,13 +48,19 @@ public:
 
     [[nodiscard]] const std::deque<const Stop*> GetStopsWithBuses() const;
 
-    svg::Document RenderMap() const;
+    [[nodiscard]] svg::Document RenderMap() const;
+
+    [[nodiscard]] const std::deque<Stop>& GetAllStops() const;
+
+    [[nodiscard]] const std::deque<Bus>& GetAllBuses() const;
+
+    [[nodiscard]] std::optional<int> GetDistance(const Stop* from_ptr,
+                                                 const Stop* to_ptr) const;
+
+    [[nodiscard]] const Stop* FindStop(
+        std::string_view stop_name) const noexcept;
 
 private:
-    std::vector<const Bus*> GetAllBusesWithStops() const;
-
-    std::vector<const Stop*> GetAllStopsInRoutes() const;
-
     const tc::TransportCatalogue& db_;
 
     const renderer::MapRenderer& renderer_;

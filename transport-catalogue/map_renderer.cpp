@@ -1,6 +1,7 @@
 #include "map_renderer.h"
 
 #include <algorithm>
+#include <utility>
 
 /*
  * В этом файле вы можете разместить код, отвечающий за визуализацию карты
@@ -29,32 +30,36 @@ SphereProjector MakeProjector(const std::vector<const Bus*>& buses,
 
 }  // namespace
 
-MapRenderer::MapRenderer(const RenderSettings& settings) : settings_(settings) {
+MapRenderer::MapRenderer(RenderSettings settings)
+    : settings_(std::move(settings)) {
 }
+
+// svg::Document MapRenderer::Render(const std::vector<const Bus*>& buses,
+//                                   const std::vector<const Stop*>& stops)
+//                                   const {
+//     auto copy_buses{buses};
+//     auto copy_stops{stops};
+
+//     return Render(std::move(copy_buses), std::move(copy_stops));
+// }
 
 svg::Document MapRenderer::Render(const std::vector<const Bus*>& buses,
                                   const std::vector<const Stop*>& stops) const {
     auto copy_buses{buses};
     auto copy_stops{stops};
-
-    return Render(std::move(copy_buses), std::move(copy_stops));
-}
-
-svg::Document MapRenderer::Render(std::vector<const Bus*>&& buses,
-                                  std::vector<const Stop*>&& stops) const {
     // sort buses and stops vectors
-    std::ranges::sort(buses, Comparator<Bus>{});
-    std::ranges::sort(stops, Comparator<Stop>{});
+    std::ranges::sort(copy_buses, Comparator<Bus>{});
+    std::ranges::sort(copy_stops, Comparator<Stop>{});
 
-    const SphereProjector proj{MakeProjector(buses, settings_)};
+    const SphereProjector proj{MakeProjector(copy_buses, settings_)};
 
     svg::Document image;
 
     // render image
-    RenderRouteLines(buses, image, proj);
-    RenderRouteNames(buses, image, proj);
-    RenderStopCircles(stops, image, proj);
-    RenderStopNames(stops, image, proj);
+    RenderRouteLines(copy_buses, image, proj);
+    RenderRouteNames(copy_buses, image, proj);
+    RenderStopCircles(copy_stops, image, proj);
+    RenderStopNames(copy_stops, image, proj);
 
     return image;
 }

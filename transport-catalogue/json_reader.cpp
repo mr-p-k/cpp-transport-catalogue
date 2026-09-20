@@ -96,8 +96,8 @@ Node CreateErrorNode(const int id) {
         .Build();
 }
 
-Node CreateBusInfoNode(const int id, const std::string_view name,
-                       const RequestHandler& rhandler) {
+Node CreateBusInfoNode(const int id, const RequestHandler& rhandler,
+                       const std::string_view name) {
     //
     using std::string_literals::operator""s;
 
@@ -123,8 +123,8 @@ Node CreateBusInfoNode(const int id, const std::string_view name,
     return result.Build();
 }
 
-Node CreateStopInfoNode(const int id, const std::string_view name,
-                        const RequestHandler& rhandler) {
+Node CreateStopInfoNode(const int id, const RequestHandler& rhandler,
+                        const std::string_view name) {
     using std::string_literals::operator""s;
 
     if (!rhandler.IsStopExists(name)) {
@@ -134,14 +134,14 @@ Node CreateStopInfoNode(const int id, const std::string_view name,
     json::Builder result;
     result.StartDict().Key("request_id"s).Value(id);
 
-    if (const auto& kBusesByStop{rhandler.GetBusesByStop(name)};
-        !kBusesByStop.empty()) {
+    if (const auto& buses_by_stop{rhandler.GetBusesByStop(name)};
+        !buses_by_stop.empty()) {
         //
         json::Builder buses;
 
         buses.StartArray();
 
-        for (const std::string_view kBus : kBusesByStop) {
+        for (const std::string_view kBus : buses_by_stop) {
             buses.Value(std::string{kBus});
         }
 
@@ -166,6 +166,47 @@ Node CreateMapInfoNode(const int id, const RequestHandler& rhandler) {
         .Value(sstream.str())
         .EndDict()
         .Build();
+}
+
+Node CreateRouteNode(const int id, const TransportRouter& router,
+                     std::string_view from, std::string_view to) {
+    using std::string_literals::operator""s;
+
+    json::Builder result;
+
+    auto route = router.FindRoute(from, to);
+    result.StartDict().Key("request_id"s).Value(id);
+
+    if (!route.has_value()) {
+        result.Key("error_message"s).Value("not found"s);
+
+        return result.EndDict().Build();
+    }
+
+    result.Key("total_time"s)
+        .Value(route->total_time)
+        .Key("items"s)
+        .StartArray();
+
+    for (const auto& item : route->items) {
+        result.StartDict().Key("time"s).Value(item.time.time).Key("type"s);
+
+        if (item.type == "Wait"s) {
+            result.Value(item.type)
+                .Key("stop_name"s)
+                .Value(std::string{item.name});
+        } else if (item.type == "Bus"s) {
+            result.Value(item.type)
+                .Key("bus"s)
+                .Value(std::string{item.name})
+                .Key("span_count"s)
+                .Value(item.span_count);
+        }
+
+        result.EndDict();
+    }
+
+    return result.EndArray().EndDict().Build();
 }
 
 Document ReadJSON(std::istream& in) {
@@ -246,6 +287,18 @@ RenderSettings JsonReader::ParseRenderSettings() const {
     return result;
 }
 
+RoutingSettings JsonReader::ParseRoutingSettings() const {
+    using std::string_literals::operator""s;
+
+    const auto& routing_settings_map{
+        GetRequestsNode("routing_settings"s).AsDict()};
+
+    return RoutingSettings{
+        .bus_wait_time = routing_settings_map.at("bus_wait_time"s).AsInt(),
+        .bus_velocity = routing_settings_map.at("bus_velocity"s).AsInt(),
+    };
+}
+
 void JsonReader::ApplyBaseRequests(tc::TransportCatalogue& db) const {
     ApplyBaseStopRequests(db);
 
@@ -253,7 +306,8 @@ void JsonReader::ApplyBaseRequests(tc::TransportCatalogue& db) const {
 }
 
 void JsonReader::PrintStatRequests(std::ostream& out,
-                                   const RequestHandler& rhandler) const {
+                                   const RequestHandler& rhandler,
+                                   const TransportRouter& router) const {
     using std::string_literals::operator""s;
 
     const auto& stat_requests_arr{GetRequestsNode("stat_requests"s).AsArray()};
@@ -270,13 +324,19 @@ void JsonReader::PrintStatRequests(std::ostream& out,
         if ("Bus"s == kType) {
             const std::string_view kName{
                 stat_request_map.at("name"s).AsString()};
-            result.Value(CreateBusInfoNode(kID, kName, rhandler).GetValue());
+            result.Value(CreateBusInfoNode(kID, rhandler, kName).GetValue());
         } else if ("Stop"s == kType) {
             const std::string_view kName{
                 stat_request_map.at("name"s).AsString()};
-            result.Value(CreateStopInfoNode(kID, kName, rhandler).GetValue());
+            result.Value(CreateStopInfoNode(kID, rhandler, kName).GetValue());
         } else if ("Map"s == kType) {
             result.Value(CreateMapInfoNode(kID, rhandler).GetValue());
+        } else if ("Route"s == kType) {
+            const std::string_view kFrom{
+                stat_request_map.at("from"s).AsString()};
+            const std::string_view kTo{stat_request_map.at("to"s).AsString()};
+
+            result.Value(CreateRouteNode(kID, router, kFrom, kTo).GetValue());
         }
     }
 

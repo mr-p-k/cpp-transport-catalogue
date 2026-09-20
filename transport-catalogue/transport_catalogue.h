@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <deque>
 #include <optional>
 #include <set>
@@ -11,11 +10,13 @@
 
 namespace tc {
 
-struct StopPtrHasher;
+using Bus = domain::Bus;
 
-using domain::Bus;
-using domain::BusInfo;
-using domain::Stop;
+using BusInfo = domain::BusInfo;
+
+using Stop = domain::Stop;
+
+using StopPtrHasher = domain::StopPtrHasher;
 
 class TransportCatalogue final {
 public:
@@ -38,27 +39,28 @@ public:
     [[nodiscard]] const std::set<std::string_view>& GetBusesByStop(
         std::string_view stop_name) const;
 
-    [[nodiscard]] int GetDistance(const Stop* stop_a_ptr,
-                                  const Stop* stop_b_ptr) const noexcept;
+    [[nodiscard]] std::optional<int> GetDistance(
+        const Stop* stop_a_ptr, const Stop* stop_b_ptr) const noexcept;
 
     [[nodiscard]] std::vector<const Bus*> GetAllBusesWithStops() const;
 
     [[nodiscard]] std::vector<const Stop*> GetAllStopsInRoutes() const;
 
+    [[nodiscard]] const std::deque<Bus>& GetBuses() const;
+
+    [[nodiscard]] const std::deque<Stop>& GetStops() const;
+
+    [[nodiscard]] const std::unordered_map<std::pair<const Stop*, const Stop*>,
+                                           int, StopPtrHasher>&
+    GetDistances() const;
+
 private:
     template <typename T>
     size_t ComputeUnique(const std::vector<T>& vec) const {
-        std::set<T> tmp{vec.cbegin(), vec.cend()};
+        const std::set<T> kTmp{vec.cbegin(), vec.cend()};
 
-        return tmp.size();
+        return kTmp.size();
     }
-
-    struct StopPtrHasher {
-        std::hash<std::uintptr_t> hasher;
-
-        size_t operator()(
-            std::pair<const Stop*, const Stop*> stop_ptr_pair) const;
-    };
 
     std::deque<Stop> stops_;
 
@@ -72,7 +74,7 @@ private:
         buses_by_stop_;
 
     std::unordered_map<std::pair<const Stop*, const Stop*>, int, StopPtrHasher>
-        distance_;
+        distances_;
 };
 
 }  // namespace tc

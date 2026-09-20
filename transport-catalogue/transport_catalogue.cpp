@@ -1,6 +1,5 @@
 #include "transport_catalogue.h"
 
-#include <cstdint>
 #include <set>
 #include <utility>
 
@@ -22,6 +21,20 @@ const Stop* TransportCatalogue::FindStop(
     auto it{stopname_to_stop_.find(stop_name)};
 
     return (it != stopname_to_stop_.cend() ? it->second : nullptr);
+}
+
+const std::deque<Bus>& TransportCatalogue::GetBuses() const {
+    return buses_;
+}
+
+const std::deque<Stop>& TransportCatalogue::GetStops() const {
+    return stops_;
+}
+
+const std::unordered_map<std::pair<const Stop*, const Stop*>, int,
+                         StopPtrHasher>&
+TransportCatalogue::GetDistances() const {
+    return distances_;
 }
 
 void TransportCatalogue::AddBus(std::string_view name,
@@ -62,35 +75,39 @@ std::optional<BusInfo> TransportCatalogue::GetBusInfo(
         return std::nullopt;
     }
 
-    const size_t route_size{found_bus->route.size()};
+    const size_t kRouteSize{found_bus->route.size()};
 
     const size_t kStopCount =
-        (found_bus->is_roundtrip ? route_size : (2 * route_size) - 1);
+        (found_bus->is_roundtrip ? kRouteSize : (2 * kRouteSize) - 1);
     const size_t kUniqueStopsCount = ComputeUnique(found_bus->route);
 
     double geo_length = 0.0;
     int route_length = 0;
 
     for (auto it = found_bus->route.cbegin(); it != found_bus->route.cend();
-         ++it) {  //
+         ++it) {
+        //
         if (auto next_it{std::next(it, 1)};
-            next_it != found_bus->route.cend()) {  //
+            next_it != found_bus->route.cend()) {
+            //
             geo_length += geo::ComputeDistance((*it)->coordinates,
                                                (*next_it)->coordinates);
 
-            route_length += GetDistance(*it, *next_it);
+            route_length += GetDistance(*it, *next_it).value_or(0);
         }
     }
 
     if (!found_bus->is_roundtrip) {
         for (auto it = found_bus->route.crbegin();
-             it != found_bus->route.crend(); ++it) {  //
+             it != found_bus->route.crend(); ++it) {
+            //
             if (auto next_it{std::next(it, 1)};
-                next_it != found_bus->route.crend()) {  //
+                next_it != found_bus->route.crend()) {
+                //
                 geo_length += geo::ComputeDistance((*it)->coordinates,
                                                    (*next_it)->coordinates);
 
-                route_length += GetDistance(*it, *next_it);
+                route_length += GetDistance(*it, *next_it).value_or(0);
             }
         }
     }
@@ -126,22 +143,20 @@ void TransportCatalogue::SetDistance(std::string_view stop_a,
         return;
     }
 
-    distance_.insert({{stop_a_ptr, stop_b_ptr}, dist});
+    distances_.insert({{stop_a_ptr, stop_b_ptr}, dist});
 }
 
-int TransportCatalogue::GetDistance(const Stop* stop_a_ptr,
-                                    const Stop* stop_b_ptr) const noexcept {
-    auto found_a_to_b{distance_.find({stop_a_ptr, stop_b_ptr})};
+std::optional<int> TransportCatalogue::GetDistance(
+    const Stop* stop_a_ptr, const Stop* stop_b_ptr) const noexcept {
+    auto found_a_to_b{distances_.find({stop_a_ptr, stop_b_ptr})};
 
-    if (found_a_to_b == distance_.cend()) {
-        auto found_b_to_a{distance_.find({stop_b_ptr, stop_a_ptr})};
+    if (found_a_to_b == distances_.cend()) {
+        auto found_b_to_a{distances_.find({stop_b_ptr, stop_a_ptr})};
 
-        return (found_b_to_a != distance_.cend()) ? found_b_to_a->second : 0;
+        return (found_b_to_a != distances_.cend()) ? found_b_to_a->second : 0;
     }
 
     return found_a_to_b->second;
-
-    return 0;
 }
 
 std::vector<const Bus*> TransportCatalogue::GetAllBusesWithStops() const {
@@ -173,16 +188,6 @@ std::vector<const Stop*> TransportCatalogue::GetAllStopsInRoutes() const {
     }
 
     return stops;
-}
-
-size_t TransportCatalogue::StopPtrHasher::operator()(
-    const std::pair<const Stop*, const Stop*> stop_ptr_pair) const {
-    const std::uintptr_t kSalt = 37;
-
-    auto s1{reinterpret_cast<std::uintptr_t>(stop_ptr_pair.first)};
-    auto s2{reinterpret_cast<std::uintptr_t>(stop_ptr_pair.second)};
-
-    return hasher(s1 + (s2 * kSalt));
 }
 
 }  // namespace tc

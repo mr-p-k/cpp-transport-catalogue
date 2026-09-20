@@ -4,6 +4,7 @@
 #include "map_renderer.h"
 #include "request_handler.h"
 #include "transport_catalogue.h"
+#include "transport_router.h"
 
 /*
  * Здесь можно разместить код наполнения транспортного справочника данными из
@@ -13,13 +14,17 @@
 
 namespace json_reader {
 
-using json::Document;
+using Document = json::Document;
 
-using json::Node;
+using Node = json::Node;
 
-using request_handler::RequestHandler;
+using RenderSettings = renderer::RenderSettings;
 
-using renderer::RenderSettings;
+using RequestHandler = request_handler::RequestHandler;
+
+using RoutingSettings = router::RoutingSettings;
+
+using TransportRouter = router::TransportRouter;
 
 Document ReadJSON(std::istream& in);
 
@@ -29,12 +34,14 @@ public:
 
     void ParseBaseRequests();
 
-    [[nodiscard]] renderer::RenderSettings ParseRenderSettings() const;
+    [[nodiscard]] RenderSettings ParseRenderSettings() const;
+
+    [[nodiscard]] RoutingSettings ParseRoutingSettings() const;
 
     void ApplyBaseRequests(tc::TransportCatalogue& db) const;
 
-    void PrintStatRequests(std::ostream& out,
-                           const RequestHandler& rhandler) const;
+    void PrintStatRequests(std::ostream& out, const RequestHandler& rhandler,
+                           const TransportRouter& router) const;
 
 private:
     [[nodiscard]] const Node& GetRequestsNode(const std::string& key) const;

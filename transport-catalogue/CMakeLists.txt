@@ -17,6 +17,10 @@ add_executable(${PROJECT_NAME} main.cpp
     request_handler.h request_handler.cpp
     svg.h svg.cpp
     transport_catalogue.h transport_catalogue.cpp
+    graph.h
+    ranges.h
+    router.h
+    transport_router.h transport_router.cpp
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE
