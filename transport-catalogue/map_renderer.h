@@ -14,17 +14,17 @@
 
 namespace renderer {
 
-using domain::Bus;
+using Bus = domain::Bus;
 
-using domain::Stop;
+using Color = svg::Color;
 
-using svg::Point;
+using Point = svg::Point;
 
-using svg::Color;
+using Rgb = svg::Rgb;
 
-using svg::Rgb;
+using Rgba = svg::Rgba;
 
-using svg::Rgba;
+using Stop = domain::Stop;
 
 namespace {
 
@@ -134,13 +134,13 @@ struct RenderSettings {
 
 class MapRenderer {
 public:
-    explicit MapRenderer(const RenderSettings& settings);
+    explicit MapRenderer(RenderSettings  settings);
 
     svg::Document Render(const std::vector<const Bus*>& routes,
                          const std::vector<const Stop*>& stops) const;
 
-    svg::Document Render(std::vector<const Bus*>&& routes,
-                         std::vector<const Stop*>&& stops) const;
+    // svg::Document Render(std::vector<const Bus*>&& routes,
+    //                      std::vector<const Stop*>&& stops) const;
 
 private:
     void RenderRouteLines(const std::vector<const Bus*>& routes,

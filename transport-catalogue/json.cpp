@@ -28,10 +28,12 @@ Node LoadArray(std::istream& input) {
         }
         result.push_back(LoadNode(input));
     }
+
     if (!input) {
         throw ParsingError("Array parsing error"s);
     }
-    return Node(std::move(result));
+
+    return {std::move(result)};
 }
 
 Node LoadDict(std::istream& input) {
@@ -58,7 +60,7 @@ Node LoadDict(std::istream& input) {
     if (!input) {
         throw ParsingError("Dictionary parsing error"s);
     }
-    return Node(std::move(dict));
+    return {std::move(dict)};
 }
 
 Node LoadString(std::istream& input) {
@@ -107,7 +109,7 @@ Node LoadString(std::istream& input) {
         ++it;
     }
 
-    return Node(std::move(s));
+    return {std::move(s)};
 }
 
 Node LoadBool(std::istream& input) {

@@ -5,6 +5,8 @@
 #include "map_renderer.h"
 #include "request_handler.h"
 
+namespace {
+
 class App final {
 public:
     explicit App(std::istream& in, std::ostream& out) : in_(in), out_(out) {
@@ -27,12 +29,14 @@ public:
 
         reader.ApplyBaseRequests(db);
 
-        renderer::MapRenderer renderer(reader.ParseRenderSettings());
+        const renderer::MapRenderer kRenderer(reader.ParseRenderSettings());
 
-        request_handler::RequestHandler rhandler{db, renderer};
+        const request_handler::RequestHandler kRHandler{db, kRenderer};
 
-        reader.PrintStatRequests(out_, rhandler);
-        // rhandler.RenderMap().Render(out_);
+        const router::TransportRouter kRouter(reader.ParseRoutingSettings(),
+                                              kRHandler);
+
+        reader.PrintStatRequests(out_, kRHandler, kRouter);
     }
 
 private:
@@ -40,8 +44,11 @@ private:
     std::ostream& out_;
 };
 
+}  // namespace
+
 int main() {
     const App kApp(std::cin, std::cout);
+
     kApp.Run();
 
     return EXIT_SUCCESS;

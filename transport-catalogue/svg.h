@@ -68,6 +68,10 @@ class PathProps {
 private:
     PathProps() = default;
 
+    Owner& AsOwner() {
+        return static_cast<Owner&>(*this);
+    }
+
 public:
     Owner& SetFillColor(Color fill_color) {
         fill_color_ = std::move(fill_color);
@@ -122,11 +126,6 @@ protected:
         if (stroke_line_join_.has_value()) {
             out << " stroke-linejoin=\""sv << *stroke_line_join_ << "\""sv;
         }
-    }
-
-private:
-    Owner& AsOwner() {
-        return static_cast<Owner&>(*this);
     }
 
 private:
@@ -228,16 +227,17 @@ private:
  * https://developer.mozilla.org/en-US/docs/Web/SVG/Element/circle
  */
 class Circle final : public Object, public PathProps<Circle> {
+private:
+    void RenderObject(const RenderContext& context) const override;
+
 public:
     Circle& SetCenter(Point center);
 
     Circle& SetRadius(double radius);
 
 private:
-    void RenderObject(const RenderContext& context) const override;
-
-private:
     Point center_ = {0.0, 0.0};
+
     double radius_ = 1.0;
 };
 
@@ -246,12 +246,12 @@ private:
  * https://developer.mozilla.org/en-US/docs/Web/SVG/Element/polyline
  */
 class Polyline final : public Object, public PathProps<Polyline> {
+private:
+    void RenderObject(const RenderContext& context) const override;
+
 public:
     // Добавляет очередную вершину к ломаной линии
     Polyline& AddPoint(Point point);
-
-private:
-    void RenderObject(const RenderContext& context) const override;
 
 private:
     std::deque<Point> points_;
@@ -262,6 +262,9 @@ private:
  * https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text
  */
 class Text final : public Object, public PathProps<Text> {
+private:
+    void RenderObject(const RenderContext& context) const override;
+
 public:
     // Задаёт координаты опорной точки (атрибуты x и y)
     Text& SetPosition(Point pos);
@@ -282,14 +285,16 @@ public:
     Text& SetData(std::string data);
 
 private:
-    void RenderObject(const RenderContext& context) const override;
-
-private:
     Point pos_ = {0.0, 0.0};
+
     Point offset_ = {0.0, 0.0};
+
     uint32_t font_size_ = 1;
+
     std::string font_family_;
+
     std::string font_weigth_;
+
     std::string data_;
 };
 
